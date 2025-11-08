@@ -3,7 +3,7 @@ use std::{env, io, process, sync::Arc};
 use crossterm::{
     event::{self, KeyCode, KeyEventKind},
     execute,
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
+    terminal::{EnterAlternateScreen, enable_raw_mode},
 };
 use ratatui::{
     Terminal,
@@ -47,7 +47,6 @@ enum AppState {
 
 #[derive(Debug)]
 enum AppAction {
-    Quit,
     InputChar(char),
     InputBackspace,
     InputEscape,
@@ -56,8 +55,10 @@ enum AppAction {
     SelectPrevious,
     ApiUpdateMessages(Vec<Message>),
     ApiUpdateChannel(Vec<Channel>),
+    #[allow(dead_code)]
     TransitionToChat(String),
     TransitionToChannels(String),
+    #[allow(dead_code)]
     TransitionToGuilds,
 }
 
@@ -264,6 +265,7 @@ async fn run_app(token: String) -> Result<(), Error> {
                             continue;
                         }
 
+                        #[allow(clippy::manual_div_ceil)]
                         let wrap_lines =
                             (width as usize + max_width as usize - 1) / (max_width as usize);
 
@@ -387,9 +389,6 @@ async fn run_app(token: String) -> Result<(), Error> {
             let mut state = app_state.lock().await;
 
             match action {
-                AppAction::Quit => {
-                    break;
-                }
                 AppAction::InputEscape => match state.state {
                     AppState::SelectingGuild => {
                         break;
@@ -484,7 +483,7 @@ async fn run_app(token: String) -> Result<(), Error> {
                         let message_data = if content.is_empty() || channel_id_clone.is_none() {
                             None
                         } else {
-                            Some((channel_id_clone.unwrap(), content))
+                            channel_id_clone.map(|id| (id, content))
                         };
 
                         if let Some((channel_id_clone, content)) = message_data {

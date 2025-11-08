@@ -33,6 +33,6 @@ pub fn setup_ctrlc_handler() {
         restore_terminal();
         process::exit(1);
     }) {
-        eprintln!("Error setting Ctrl-C handler: {}", e);
+        eprintln!("Error setting Ctrl-C handler: {e}");
     }
 }
