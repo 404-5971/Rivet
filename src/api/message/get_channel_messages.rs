@@ -9,7 +9,7 @@ pub async fn get_channel_messages(
     around: Option<String>,
     before: Option<String>,
     after: Option<String>,
-    limit: Option<String>,
+    limit: Option<usize>,
 ) -> Result<Vec<Message>, Error> {
     let mut api_url = format!("https://discord.com/api/v10/channels/{channel_id}/messages?");
 
@@ -23,7 +23,7 @@ pub async fn get_channel_messages(
         api_url.push_str(format!("after={}&", after.as_str()).as_str());
     }
     if let Some(limit) = limit {
-        api_url.push_str(format!("limit={}", limit.as_str()).as_str());
+        api_url.push_str(format!("limit={limit}").as_str());
     }
 
     let response = client
@@ -38,9 +38,7 @@ pub async fn get_channel_messages(
         return Err("Failed to request Discord API".into());
     }
 
-    let mut messages: Vec<Message> = response.json().await?;
-
-    messages.reverse();
+    let messages: Vec<Message> = response.json().await?;
 
     Ok(messages)
 }
