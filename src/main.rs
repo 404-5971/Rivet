@@ -185,7 +185,8 @@ async fn move_selection(state: &mut MutexGuard<'_, App>, n: i32) {
                         state.selection_index - n.unsigned_abs() as usize
                     };
                 } else {
-                    state.selection_index += n.unsigned_abs() as usize % state.guilds.len();
+                    state.selection_index =
+                        (state.selection_index + n.unsigned_abs() as usize) % state.guilds.len();
                 }
             }
         }
