@@ -10,6 +10,7 @@ pub struct Channel {
     pub name: String,
     #[serde(rename = "type")]
     pub channel_type: u8,
+    pub guild_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
