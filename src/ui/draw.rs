@@ -145,8 +145,11 @@ pub fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
             let mut final_content: Vec<Line> = Vec::new();
 
             for message in messages_to_render.into_iter() {
-                let formatted_text = format!(
-                    "[{}] {}: {}",
+                let mut lines = vec![];
+
+                let formatted_time = format!(
+                    "[{} {}]",
+                    message.timestamp.split('T').next().unwrap_or(""),
                     message
                         .timestamp
                         .split('T')
@@ -155,10 +158,22 @@ pub fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
                         .split('.')
                         .next()
                         .unwrap_or(""),
-                    message.author.username,
-                    message.content.as_deref().unwrap_or("(*non-text*)")
                 );
-                let text = Text::raw(formatted_text);
+
+                let author = format!(" {}: ", message.author.username);
+
+                let content = message
+                    .content
+                    .clone()
+                    .unwrap_or("(*non-text*)".to_string());
+
+                lines.push(Line::from(vec![
+                    Span::styled(formatted_time, Style::default().fg(Color::LightBlue)),
+                    Span::styled(author, Style::default().fg(Color::Yellow)),
+                    Span::styled(content, Style::default().fg(Color::White)),
+                ]));
+
+                let text = Text::from(lines);
 
                 final_content.extend(text.lines);
             }
