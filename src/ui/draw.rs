@@ -6,7 +6,7 @@ use ratatui::{
 use unicode_width::UnicodeWidthStr;
 
 use crate::{
-    App, AppState, UNICODE_EMOJI_DICTIONARY,
+    App, AppState,
     model::{Guild, Message},
 };
 
@@ -198,15 +198,17 @@ pub fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
 
         let mut filtered_items: Vec<ListItem> = Vec::new();
 
-        let filtered_unicode: Vec<(&str, &str)> = UNICODE_EMOJI_DICTIONARY
+        let app_clone = app.clone();
+
+        let filtered_unicode: Vec<&(String, String)> = app_clone
+            .emoji_map
             .iter()
             .filter(|(name, _)| name.starts_with(&app.emoji_filter))
-            .copied()
             .collect();
 
         for (name, char) in filtered_unicode.iter() {
             filtered_items.push(ListItem::new(Line::from(vec![
-                Span::styled(*char, Style::default().fg(Color::White)),
+                Span::styled(char.clone(), Style::default().fg(Color::White)),
                 Span::raw(" "),
                 Span::styled(
                     format!(":{name}: (Unicode)"),
