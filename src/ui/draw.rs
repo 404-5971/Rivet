@@ -61,10 +61,13 @@ pub fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
         }
         AppState::SelectingChannel(guild_id) => {
             let title = format!("Channels for Guild: {guild_id}");
+
+            let filter_text = app.input.to_lowercase();
+
             let items: Vec<ListItem> = app
                 .channels
                 .iter()
-                .filter(|c| c.channel_type != 4)
+                .filter(|c| c.channel_type != 4 && c.name.to_lowercase().contains(&filter_text))
                 .map(|c| {
                     let char = match c.channel_type {
                         2 => '',
@@ -74,6 +77,9 @@ pub fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
                     ListItem::new(format!("{char} {}", c.name))
                 })
                 .collect();
+
+            let num_filtered = items.len();
+            app.selection_index = app.selection_index.min(num_filtered.saturating_sub(1));
 
             let list = List::new(items)
                 .block(Block::default().title(title).borders(Borders::ALL))
