@@ -7,7 +7,7 @@ use unicode_width::UnicodeWidthStr;
 
 use crate::{
     App, AppState,
-    api::{Emoji, Guild, Message},
+    api::{DM, Emoji, Guild, Message},
 };
 
 pub fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
@@ -29,6 +29,60 @@ pub fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
     let max_width = app.terminal_width.saturating_sub(2) as u16;
 
     match &app.state {
+        AppState::Home => {
+            let options = [
+                ("Guilds", Color::LightMagenta),
+                ("DMs", Color::LightYellow),
+                ("Quit", Color::LightRed),
+            ];
+
+            let items: Vec<ListItem> = options.iter().map(|o| ListItem::new(o.0).fg(o.1)).collect();
+
+            let list = List::new(items)
+                .block(
+                    Block::default()
+                        .title("Rivet Client - Home")
+                        .borders(Borders::ALL),
+                )
+                .highlight_style(Style::default().reversed())
+                .highlight_symbol(">> ");
+
+            app.selection_index = app.selection_index.min(options.len().saturating_sub(1));
+
+            let mut state = ListState::default().with_selected(Some(app.selection_index));
+            f.render_widget(Clear, chunks[0]);
+            f.render_stateful_widget(list, chunks[0], &mut state);
+        }
+        AppState::SelectingDM => {
+            let filter_text = app.input.to_lowercase();
+
+            let filtered_dms: Vec<&DM> = app
+                .dms
+                .iter()
+                .filter(|d| d.get_name().to_lowercase().contains(&filter_text))
+                .collect();
+
+            let items: Vec<ListItem> = filtered_dms
+                .iter()
+                .map(|d| ListItem::new(d.get_name()))
+                .collect();
+
+            let num_filtered = items.len();
+            app.selection_index = app.selection_index.min(num_filtered.saturating_sub(1));
+
+            let list = List::new(items)
+                .block(
+                    Block::default()
+                        .title("Rivet Client - Direct Messages")
+                        .borders(Borders::ALL),
+                )
+                .highlight_style(Style::default().reversed())
+                .highlight_symbol(">> ");
+
+            let mut state = ListState::default().with_selected(Some(app.selection_index));
+            f.render_widget(Clear, chunks[0]);
+            f.render_stateful_widget(list, chunks[0], &mut state);
+        }
         AppState::SelectingGuild => {
             let filter_text = app.input.to_lowercase();
 
