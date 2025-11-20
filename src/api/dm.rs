@@ -31,4 +31,20 @@ impl DM {
             Err(format!("API Error: {}", response.status()).into())
         }
     }
+
+    pub fn get_name(&self) -> String {
+        let mut users = self.recipients.iter().map(|u| u.username.clone());
+        let mut name = String::new();
+
+        match users.next() {
+            Some(user) => name.push_str(user.as_str()),
+            None => return String::new(),
+        };
+
+        for user in users {
+            name.push_str(format!(", {user}").as_str());
+        }
+
+        name
+    }
 }
