@@ -1,10 +1,6 @@
-use reqwest::Response;
 use serde::Deserialize;
 
-use crate::{
-    Error,
-    api::{ApiClient, User},
-};
+use crate::api::User;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Message {
@@ -44,74 +40,4 @@ pub struct Message {
     pub resolved: Option<Resolved>,
     pub poll: Option<Box<Poll>>,
     pub call: Option<MessageCall>,*/
-}
-
-impl Message {
-    pub async fn send(
-        api_client: &ApiClient,
-        channel_id: &str,
-        content: Option<String>,
-        tts: bool,
-    ) -> Result<Response, Error> {
-        let api_url = format!("{}/channels/{channel_id}/messages?", api_client.base_url);
-
-        let content: &str = &content.unwrap_or("".to_string());
-
-        let payload = serde_json::json!({
-            "content": content,
-            "tts": tts,
-        });
-
-        let response = api_client
-            .http_client
-            .post(&api_url)
-            .header("Authorization", &api_client.auth_token)
-            .header("Content-Type", "application/json")
-            .json(&payload)
-            .send()
-            .await?;
-
-        Ok(response)
-    }
-
-    pub async fn from_channel(
-        api_client: &ApiClient,
-        channel_id: &str,
-        around: Option<String>,
-        before: Option<String>,
-        after: Option<String>,
-        limit: Option<usize>,
-    ) -> Result<Vec<Self>, Error> {
-        let mut api_url = format!("{}/channels/{channel_id}/messages?", api_client.base_url);
-
-        if let Some(around) = around {
-            api_url.push_str(format!("around={}&", around.as_str()).as_str());
-        }
-        if let Some(before) = before {
-            api_url.push_str(format!("before={}&", before.as_str()).as_str());
-        }
-        if let Some(after) = after {
-            api_url.push_str(format!("after={}&", after.as_str()).as_str());
-        }
-        if let Some(limit) = limit {
-            api_url.push_str(format!("limit={limit}").as_str());
-        }
-
-        let response = api_client
-            .http_client
-            .get(&api_url)
-            .header("Authorization", &api_client.auth_token)
-            .send()
-            .await?;
-
-        if !response.status().is_success() {
-            eprintln!("API Error: Status code {}", response.status());
-            eprintln!("Body response: {}", response.text().await?);
-            return Err("Failed to request Discord API".into());
-        }
-
-        let messages: Vec<Self> = response.json().await?;
-
-        Ok(messages)
-    }
 }
