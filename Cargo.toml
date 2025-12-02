@@ -1,5 +1,5 @@
 [package]
-name = "rivet"
+name = "rivetui"
 version = "0.1.2"
 edition = "2024"
 description = "A Terminal UI Discord Client in Rust"
@@ -10,7 +10,7 @@ license = "MIT"
 authors = [
   "YetAnotherMechanicusEnjoyer <https://github.com/YetAnotherMechanicusEnjoyer>",
 ]
-keywords = ["api", "terminal", "discord", "tui", "tokio", "crossterm"]
+keywords = ["api", "terminal", "discord", "tui"]
 categories = ["command-line-utilities"]
 
 [dependencies]
