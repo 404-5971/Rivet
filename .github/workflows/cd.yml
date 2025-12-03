@@ -240,6 +240,12 @@ jobs:
               su - builder -c 'cd /app && makepkg --printsrcinfo > .SRCINFO'"
         shell: bash
 
+      - name: AUR Repository Permissions
+        run: |
+          CURRENT_USER=$(whoami)
+          sudo chown -R $CURRENT_USER:$CURRENT_USER rivetui/
+        shell: bash
+
       - name: Commit and Push to AUR
         run: |
           cd rivetui
