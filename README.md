@@ -9,10 +9,12 @@
     <img src="https://img.shields.io/github/license/YetAnotherMechanicusEnjoyer/Rivet?style=for-the-badge&logo=github&color=2EA44F"></a>
 </p>
 <p align="center">
+  <a href="https://github.com/YetAnotherMechanicusEnjoyer/Rivet/actions/workflows/aur.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/YetAnotherMechanicusEnjoyer/Rivet/aur.yml?style=for-the-badge&logo=github-actions&logoColor=white&color=1793D1&label=AUR"></a>
   <a href="https://github.com/YetAnotherMechanicusEnjoyer/Rivet/actions/workflows/rust.yml">
-    <img src="https://img.shields.io/github/actions/workflow/status/YetAnotherMechanicusEnjoyer/Rivet/rust.yml?style=for-the-badge&logo=github-actions&logoColor=white&color=2088FF&label=CI"></a>
-  <a href="https://github.com/YetAnotherMechanicusEnjoyer/Rivet/actions/workflows/cd.yml">
-    <img src="https://img.shields.io/github/actions/workflow/status/YetAnotherMechanicusEnjoyer/Rivet/cd.yml?style=for-the-badge&logo=github-actions&logoColor=white&color=2088FF&label=CD"></a> 
+    <img src="https://img.shields.io/github/actions/workflow/status/YetAnotherMechanicusEnjoyer/Rivet/rust.yml?style=for-the-badge&logo=github-actions&logoColor=white&color=FF4E00&label=Rust"></a>
+  <a href="https://github.com/YetAnotherMechanicusEnjoyer/Rivet/actions/workflows/bin.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/YetAnotherMechanicusEnjoyer/Rivet/bin.yml?style=for-the-badge&logo=github-actions&logoColor=white&color=2088FF&label=Binaries"></a>
 </p>
 
 # Rivet
