@@ -184,7 +184,7 @@ jobs:
 
       - name: Builder Docker Image & Run makepkg
         run: |
-          docker build --file Dockerfile.arch --tag rivetui-makepkg-check:latest .
+          docker build --file arch.Dockerfile --tag rivetui-makepkg-check:latest .
 
   publish-aur:
     name: Publishing to AUR
