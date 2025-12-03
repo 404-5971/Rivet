@@ -43,6 +43,15 @@ The developers, contributors, and maintainers of this repository disclaim all li
 >
 > The user assumes all risk for any account actions, bans, or penalties issued by Discord due to improper use of this software.
 
+## Installation ([AUR](https://aur.archlinux.org/packages/rivetui))
+
+> [!NOTE]
+> Make sure to have [YaY](https://github.com/Jguer/yay) installed.
+
+```bash
+yay -S rivetui
+```
+
 ## Installation (Binaries)
 
 > [!NOTE]
