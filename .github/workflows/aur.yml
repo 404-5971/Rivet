@@ -57,7 +57,7 @@ jobs:
 
           sed -i "s/^sha256sums=.*/sha256sums=('SKIP')/" PKGBUILD
 
-          sed -i "s/^pkgname=.*/pkgname=${{ env.pkgname }}" PKGBUILD
+          sed -i "s/^pkgname=.*/pkgname=${{ env.pkgname }}/" PKGBUILD
 
       - name: Regenerate .SRCINFO
         run: |
