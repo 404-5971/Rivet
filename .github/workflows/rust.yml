@@ -97,8 +97,7 @@ jobs:
       - name: Commit version
         run: |
           git add Cargo.toml
-          git commit -m "[RELEASE] Bump version to ${{ steps.version_extract.outputs.VERSION }} before publishing"
-          git push
+          git commit -m "[RELEASE] Bump version to ${{ steps.version_extract.outputs.VERSION }} before publishing" && git push || exit 0
 
       - run: cargo publish
         env:

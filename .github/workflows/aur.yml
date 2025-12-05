@@ -90,5 +90,4 @@ jobs:
           cd "${{ env.pkgname }}"
 
           git add PKGBUILD .SRCINFO
-          git commit -m "Update ${{ env.pkgname }} to version ${{ steps.version_extract.outputs.VERSION }}" || exit 0
-          git push
+          git commit -m "Update ${{ env.pkgname }} to version ${{ steps.version_extract.outputs.VERSION }}" && git push || exit 0
