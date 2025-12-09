@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::Deserialize;
 
 use crate::Error;
@@ -138,33 +140,34 @@ impl Channel {
             return Err("Error: channels must not be empty.".into());
         }
 
-        let mut final_categories: Vec<Self> = Vec::new();
+        let (categories, other_channels): (Vec<Self>, Vec<Self>) =
+            channels.into_iter().partition(|c| c.channel_type == 4);
 
-        let categories: Vec<&Channel> = channels.iter().filter(|c| c.channel_type == 4).collect();
+        let mut categorized_map: HashMap<String, Vec<Self>> = HashMap::new();
+        let mut uncategorized_channels: Vec<Self> = Vec::new();
 
-        for category in categories {
-            let channels_to_push: Vec<Channel> = channels
-                .clone()
-                .into_iter()
-                .filter(|c| c.parent_id.clone().is_some_and(|pid| pid == category.id))
-                .collect();
-            final_categories.push(Self {
-                id: category.id.clone(),
-                name: category.name.clone(),
-                guild_id: category.guild_id.clone(),
-                parent_id: None,
-                channel_type: 4,
-                children: Some(channels_to_push),
-                permission_overwrites: category.permission_overwrites.clone(),
-            });
+        for channel in other_channels.into_iter() {
+            if let Some(parent_id) = &channel.parent_id {
+                categorized_map
+                    .entry(parent_id.clone())
+                    .or_default()
+                    .push(channel);
+            } else {
+                uncategorized_channels.push(channel);
+            }
         }
 
-        let without_categories = channels
-            .iter()
-            .filter(|c| c.channel_type != 4 && c.parent_id.is_none())
-            .cloned()
-            .collect::<Vec<Channel>>();
+        let mut final_list: Vec<Self> = Vec::new();
 
-        Ok([final_categories, without_categories].concat())
+        for mut category in categories {
+            if let Some(children) = categorized_map.remove(&category.id) {
+                category.children = Some(children);
+            }
+            final_list.push(category);
+        }
+
+        final_list.extend(uncategorized_channels);
+
+        Ok(final_list)
     }
 }
