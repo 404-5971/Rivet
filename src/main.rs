@@ -118,6 +118,7 @@ pub struct App {
     pending_command: Option<char>,
     last_command_time: Instant,
     command_timeout: Duration,
+    vim_mode: bool,
 }
 
 impl App {
@@ -181,7 +182,7 @@ impl App {
     }
 }
 
-async fn run_app(token: String) -> Result<(), Error> {
+async fn run_app(token: String, vim_mode: bool) -> Result<(), Error> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen)?;
@@ -212,6 +213,7 @@ async fn run_app(token: String) -> Result<(), Error> {
         pending_command: None,
         last_command_time: Instant::now(),
         command_timeout: Duration::from_secs(1),
+        vim_mode,
     }));
 
     let (tx_action, mut rx_action) = mpsc::channel::<AppAction>(32);
@@ -339,12 +341,16 @@ async fn run_app(token: String) -> Result<(), Error> {
                 })
                 .unwrap();
 
-            match state_guard.mode {
-                InputMode::Normal => {
-                    execute!(io::stdout(), SetCursorStyle::BlinkingBlock).ok();
-                }
-                InputMode::Insert => {
-                    execute!(io::stdout(), SetCursorStyle::BlinkingBar).ok();
+            if !state_guard.vim_mode {
+                execute!(io::stdout(), SetCursorStyle::BlinkingBar).ok();
+            } else {
+                match state_guard.mode {
+                    InputMode::Normal => {
+                        execute!(io::stdout(), SetCursorStyle::BlinkingBlock).ok();
+                    }
+                    InputMode::Insert => {
+                        execute!(io::stdout(), SetCursorStyle::BlinkingBar).ok();
+                    }
                 }
             }
         }
@@ -380,9 +386,14 @@ async fn main() -> Result<(), Error> {
 
     setup_ctrlc_handler();
 
-    let app_result = run_app(token).await;
+    let vim_mode = env::args().any(|arg| arg == "--vim");
+
+    if let Err(e) = run_app(token, vim_mode).await {
+        restore_terminal();
+        return Err(e);
+    }
 
     restore_terminal();
 
-    app_result
+    Ok(())
 }

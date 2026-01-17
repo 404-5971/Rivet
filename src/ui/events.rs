@@ -486,7 +486,9 @@ pub async fn handle_keys_events(
     match action {
         AppAction::SigInt => return Some(KeywordAction::Break),
         AppAction::InputEscape => {
-            if state.mode == InputMode::Insert {
+            if !state.vim_mode {
+                // In standard mode, Esc should navigate back or quit, not switch input modes
+            } else if state.mode == InputMode::Insert {
                 state.mode = InputMode::Normal;
                 return None;
             }
@@ -531,11 +533,8 @@ pub async fn handle_keys_events(
                 }
             }
         }
-        AppAction::InputChar(c) => match state.mode {
-            InputMode::Normal => {
-                vim::handle_vim_keys(state, c, tx_action).await;
-            }
-            InputMode::Insert => {
+        AppAction::InputChar(c) => {
+            if !state.vim_mode {
                 let current_state = state.state.clone();
                 match current_state {
                     AppState::EmojiSelection(channel_id) => {
@@ -556,8 +555,36 @@ pub async fn handle_keys_events(
                         state.cursor_position += 1;
                     }
                 }
+            } else {
+                match state.mode {
+                    InputMode::Normal => {
+                        vim::handle_vim_keys(state, c, tx_action).await;
+                    }
+                    InputMode::Insert => {
+                        let current_state = state.state.clone();
+                        match current_state {
+                            AppState::EmojiSelection(channel_id) => {
+                                let pos = state.cursor_position;
+                                state.input.insert(pos, c);
+                                state.cursor_position += 1;
+                                if c == ' ' {
+                                    state.state = AppState::Chatting(channel_id.clone());
+                                    state.emoji_filter.clear();
+                                } else {
+                                    state.emoji_filter.push(c);
+                                }
+                                state.selection_index = 0;
+                            }
+                            _ => {
+                                let pos = state.cursor_position;
+                                state.input.insert(pos, c);
+                                state.cursor_position += 1;
+                            }
+                        }
+                    }
+                }
             }
-        },
+        }
         AppAction::SelectEmoji => {
             if let AppState::Chatting(channel_id) = &mut state.clone().state {
                 let is_start_of_emoji = state.input.ends_with(' ') || state.input.is_empty();
