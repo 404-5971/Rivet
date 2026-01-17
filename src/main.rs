@@ -108,6 +108,7 @@ pub struct App {
     tick_count: usize,
     context: Option<PermissionContext>,
     mode: InputMode,
+    cursor_position: usize,
 }
 
 impl App {
@@ -198,6 +199,7 @@ async fn run_app(token: String) -> Result<(), Error> {
         tick_count: 0,
         context: None,
         mode: InputMode::Normal,
+        cursor_position: 0,
     }));
 
     let (tx_action, mut rx_action) = mpsc::channel::<AppAction>(32);

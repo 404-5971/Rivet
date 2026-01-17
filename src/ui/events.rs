@@ -95,6 +95,7 @@ async fn input_submit(
             let selected_dm_name = selected_dm.recipients[0].username.clone();
 
             state.input = String::new();
+            state.cursor_position = 0;
             state.status_message = format!("Loading messages for {selected_dm_name}...");
 
             tx_action
@@ -224,6 +225,7 @@ async fn input_submit(
                 .ok();
 
             state.input = String::new();
+            state.cursor_position = 0;
             state.status_message = format!("Loading messages for {selected_channel_name}...");
 
             match state
@@ -249,12 +251,18 @@ async fn input_submit(
                 let (_, char) = filtered_unicode[state.selection_index];
 
                 let emoji_len = state.emoji_filter.len();
-                for _ in 0..(emoji_len + 1) {
-                    state.input.pop();
-                }
+                let mut pos = state.cursor_position;
+                let start_pos = pos.saturating_sub(emoji_len + 1);
 
-                state.input.push_str(char);
-                state.input.push(' ');
+                state.input.drain(start_pos..pos);
+                pos = start_pos;
+
+                state.input.insert_str(pos, char);
+                pos += char.len();
+                state.input.insert(pos, ' ');
+                pos += 1;
+
+                state.cursor_position = pos;
             } else if state.selection_index < total_filtered_emojis {
                 let custom_index = state.selection_index - filtered_unicode.len();
                 let emoji = filtered_custom[custom_index];
@@ -271,12 +279,18 @@ async fn input_submit(
                 );
 
                 let emoji_len = state.emoji_filter.len();
-                for _ in 0..(emoji_len + 1) {
-                    state.input.pop();
-                }
+                let mut pos = state.cursor_position;
+                let start_pos = pos.saturating_sub(emoji_len + 1);
 
-                state.input.push_str(&emoji_string);
-                state.input.push(' ');
+                state.input.drain(start_pos..pos);
+                pos = start_pos;
+
+                state.input.insert_str(pos, &emoji_string);
+                pos += emoji_string.len();
+                state.input.insert(pos, ' ');
+                pos += 1;
+
+                state.cursor_position = pos;
             }
 
             state.state = AppState::Chatting(channel_id.clone());
@@ -294,6 +308,7 @@ async fn input_submit(
             };
 
             let content = state.input.drain(..).collect::<String>();
+            state.cursor_position = 0;
 
             let message_data = if content.is_empty() || channel_id_clone.is_none() {
                 None
@@ -439,6 +454,65 @@ async fn move_selection(state: &mut MutexGuard<'_, App>, n: i32, total_filtered_
     }
 }
 
+fn clamp_cursor(state: &mut MutexGuard<'_, App>) {
+    let len = state.input.len();
+    if state.cursor_position > len {
+        state.cursor_position = len;
+    }
+}
+
+fn move_cursor_word_forward(state: &mut MutexGuard<'_, App>) {
+    let input = &state.input;
+    let len = input.len();
+    let mut pos = state.cursor_position;
+
+    if pos >= len {
+        return;
+    }
+
+    // If on a space, skip spaces
+    while pos < len && input.chars().nth(pos).unwrap().is_whitespace() {
+        pos += 1;
+    }
+
+    // Skip current word
+    while pos < len && !input.chars().nth(pos).unwrap().is_whitespace() {
+        pos += 1;
+    }
+
+    // Skip spaces to next word
+    while pos < len && input.chars().nth(pos).unwrap().is_whitespace() {
+        pos += 1;
+    }
+
+    state.cursor_position = pos;
+    clamp_cursor(state);
+}
+
+fn move_cursor_word_backward(state: &mut MutexGuard<'_, App>) {
+    let input = &state.input;
+    let mut pos = state.cursor_position;
+
+    if pos == 0 {
+        return;
+    }
+
+    // Move back one char to start checking
+    pos -= 1;
+
+    // Skip spaces backwards
+    while pos > 0 && input.chars().nth(pos).unwrap().is_whitespace() {
+        pos -= 1;
+    }
+
+    // Skip word backwards
+    while pos > 0 && !input.chars().nth(pos - 1).unwrap().is_whitespace() {
+        pos -= 1;
+    }
+
+    state.cursor_position = pos;
+}
+
 pub async fn handle_keys_events(
     mut state: MutexGuard<'_, App>,
     action: AppAction,
@@ -519,33 +593,58 @@ pub async fn handle_keys_events(
                 'k' => {
                     tx_action.send(AppAction::SelectPrevious).await.ok();
                 }
+                'h' => {
+                    if state.cursor_position > 0 {
+                        state.cursor_position -= 1;
+                    }
+                }
+                'l' => {
+                    if state.cursor_position < state.input.len() {
+                        state.cursor_position += 1;
+                    }
+                }
+                'w' => {
+                    move_cursor_word_forward(&mut state);
+                }
+                'b' => {
+                    move_cursor_word_backward(&mut state);
+                }
                 ':' => {
                     tx_action.send(AppAction::SelectEmoji).await.ok();
                 }
                 _ => {}
             },
-            InputMode::Insert => match &mut state.clone().state {
-                AppState::EmojiSelection(channel_id) => {
-                    state.input.push(c);
-                    if c == ' ' {
-                        state.state = AppState::Chatting(channel_id.clone());
-                        state.emoji_filter.clear();
-                    } else {
-                        state.emoji_filter.push(c);
+            InputMode::Insert => {
+                let current_state = state.state.clone();
+                match current_state {
+                    AppState::EmojiSelection(channel_id) => {
+                        let pos = state.cursor_position;
+                        state.input.insert(pos, c);
+                        state.cursor_position += 1;
+                        if c == ' ' {
+                            state.state = AppState::Chatting(channel_id.clone());
+                            state.emoji_filter.clear();
+                        } else {
+                            state.emoji_filter.push(c);
+                        }
+                        state.selection_index = 0;
                     }
-                    state.selection_index = 0;
+                    _ => {
+                        let pos = state.cursor_position;
+                        state.input.insert(pos, c);
+                        state.cursor_position += 1;
+                    }
                 }
-                _ => {
-                    state.input.push(c);
-                }
-            },
+            }
         },
         AppAction::SelectEmoji => {
             if let AppState::Chatting(channel_id) = &mut state.clone().state {
                 let is_start_of_emoji = state.input.ends_with(' ') || state.input.is_empty();
 
                 if is_start_of_emoji {
-                    state.input.push(':');
+                    let pos = state.cursor_position;
+                    state.input.insert(pos, ':');
+                    state.cursor_position += 1;
                     let owned_channel_id = channel_id.clone();
                     state.state = AppState::EmojiSelection(owned_channel_id);
                     state.status_message =
@@ -553,26 +652,41 @@ pub async fn handle_keys_events(
                     state.emoji_filter.clear();
                     state.selection_index = 0;
                 } else {
-                    state.input.push(':');
+                    let pos = state.cursor_position;
+                    state.input.insert(pos, ':');
+                    state.cursor_position += 1;
                 }
             }
         }
         AppAction::InputBackspace => {
-            match &mut state.clone().state {
+            let current_state = state.state.clone();
+            match current_state {
                 AppState::Chatting(_) => {
-                    state.input.pop();
+                    if state.cursor_position > 0 {
+                        let pos = state.cursor_position;
+                        state.input.remove(pos - 1);
+                        state.cursor_position -= 1;
+                    }
                 }
                 AppState::EmojiSelection(channel_id) => {
-                    state.input.pop();
-                    state.emoji_filter.pop();
-                    if state.emoji_filter.is_empty() {
-                        state.state = AppState::Chatting(channel_id.clone());
-                        state.status_message = "Chatting in channel. Press Enter to send message. Esc to return channels".to_string();
+                    if state.cursor_position > 0 {
+                        let pos = state.cursor_position;
+                        state.input.remove(pos - 1);
+                        state.cursor_position -= 1;
+                        state.emoji_filter.pop();
+                        if state.emoji_filter.is_empty() {
+                            state.state = AppState::Chatting(channel_id.clone());
+                            state.status_message = "Chatting in channel. Press Enter to send message. Esc to return channels".to_string();
+                        }
+                        state.selection_index = 0;
                     }
-                    state.selection_index = 0;
                 }
                 _ => {
-                    state.input.pop();
+                    if state.cursor_position > 0 {
+                        let pos = state.cursor_position;
+                        state.input.remove(pos - 1);
+                        state.cursor_position -= 1;
+                    }
                 }
             }
         }
@@ -629,6 +743,7 @@ pub async fn handle_keys_events(
         }
         AppAction::TransitionToChannels(guild_id) => {
             state.input = String::new();
+            state.cursor_position = 0;
             state.state = AppState::SelectingChannel(guild_id);
             state.status_message =
                 "Select a server. Use arrows to navigate, Enter to select & Esc to quit"
@@ -651,6 +766,7 @@ pub async fn handle_keys_events(
         }
         AppAction::TransitionToGuilds => {
             state.input = String::new();
+            state.cursor_position = 0;
             state.state = AppState::SelectingGuild;
             state.status_message =
                 "Select a server. Use arrows to navigate, Enter to select & Esc to quit"
@@ -659,6 +775,7 @@ pub async fn handle_keys_events(
         }
         AppAction::TransitionToDM => {
             state.input = String::new();
+            state.cursor_position = 0;
             state.state = AppState::SelectingDM;
             state.status_message =
                 "Select a DM. Use arrows to navigate, Enter to select & Esc to quit".to_string();
@@ -666,6 +783,7 @@ pub async fn handle_keys_events(
         }
         AppAction::TransitionToHome => {
             state.input = String::new();
+            state.cursor_position = 0;
             state.state = AppState::Home;
             state.status_message = "Browse either DMs or Servers. Use arrows to navigate, Enter to select & Esc to quit".to_string();
             state.selection_index = 0;

@@ -523,7 +523,8 @@ pub fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
         chunks[1],
     );
 
-    let cursor_x = chunks[1].x + 1 + app.input.width() as u16;
+    let cursor_x =
+        chunks[1].x + 1 + UnicodeWidthStr::width(&app.input[..app.cursor_position]) as u16;
     let cursor_y = chunks[1].y + 1;
     f.set_cursor_position((cursor_x, cursor_y));
 }
