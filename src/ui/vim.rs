@@ -43,7 +43,13 @@ pub fn clamp_cursor(state: &mut MutexGuard<'_, App>) {
     if len == 0 {
         state.cursor_position = 0;
     } else if state.cursor_position >= len {
-        state.cursor_position = len - 1;
+        let last_char_len = state
+            .input
+            .chars()
+            .last()
+            .map(|c| c.len_utf8())
+            .unwrap_or(0);
+        state.cursor_position = len.saturating_sub(last_char_len);
     }
 }
 
@@ -57,16 +63,31 @@ fn get_motion_range(state: &MutexGuard<'_, App>, motion: VimMotion) -> (usize, u
             let mut pos = start;
             if pos < len {
                 // If on a space, skip spaces
-                while pos < len && input.chars().nth(pos).unwrap().is_whitespace() {
-                    pos += 1;
+                while pos < len {
+                    let c = input[pos..].chars().next().unwrap();
+                    if c.is_whitespace() {
+                        pos += c.len_utf8();
+                    } else {
+                        break;
+                    }
                 }
                 // Skip current word
-                while pos < len && !input.chars().nth(pos).unwrap().is_whitespace() {
-                    pos += 1;
+                while pos < len {
+                    let c = input[pos..].chars().next().unwrap();
+                    if !c.is_whitespace() {
+                        pos += c.len_utf8();
+                    } else {
+                        break;
+                    }
                 }
                 // Skip spaces to next word
-                while pos < len && input.chars().nth(pos).unwrap().is_whitespace() {
-                    pos += 1;
+                while pos < len {
+                    let c = input[pos..].chars().next().unwrap();
+                    if c.is_whitespace() {
+                        pos += c.len_utf8();
+                    } else {
+                        break;
+                    }
                 }
             }
             pos.min(len)
@@ -74,21 +95,54 @@ fn get_motion_range(state: &MutexGuard<'_, App>, motion: VimMotion) -> (usize, u
         VimMotion::WordBackward => {
             let mut pos = start;
             if pos > 0 {
-                pos -= 1;
+                let c = input[..pos].chars().next_back().unwrap();
+                pos -= c.len_utf8();
                 // Skip spaces backwards
-                while pos > 0 && input.chars().nth(pos).unwrap().is_whitespace() {
-                    pos -= 1;
+                while pos > 0 {
+                    let c = input[..pos].chars().next_back().unwrap();
+                    if c.is_whitespace() {
+                        pos -= c.len_utf8();
+                    } else {
+                        break;
+                    }
                 }
                 // Skip word backwards
-                while pos > 0 && !input.chars().nth(pos - 1).unwrap().is_whitespace() {
-                    pos -= 1;
+                while pos > 0 {
+                    let c = input[..pos].chars().next_back().unwrap();
+                    if !c.is_whitespace() {
+                        pos -= c.len_utf8();
+                    } else {
+                        break;
+                    }
                 }
             }
             pos
         }
         VimMotion::Line => len, // Special case, usually handled by operator logic
-        VimMotion::CharRight => (start + 1).min(len),
-        VimMotion::CharLeft => start.saturating_sub(1),
+        VimMotion::CharRight => {
+            if start < len {
+                start
+                    + input[start..]
+                        .chars()
+                        .next()
+                        .map(|c| c.len_utf8())
+                        .unwrap_or(0)
+            } else {
+                len
+            }
+        }
+        VimMotion::CharLeft => {
+            if start > 0 {
+                start
+                    - input[..start]
+                        .chars()
+                        .next_back()
+                        .map(|c| c.len_utf8())
+                        .unwrap_or(0)
+            } else {
+                0
+            }
+        }
         VimMotion::StartOfLine => 0,
         VimMotion::EndOfLine => len,
     };
@@ -106,7 +160,8 @@ fn execute_operator(state: &mut MutexGuard<'_, App>, operator: VimOperator, rang
 
     match operator {
         VimOperator::Delete => {
-            if high > low {
+            if high > low && state.input.is_char_boundary(low) && state.input.is_char_boundary(high)
+            {
                 state.input.drain(low..high);
                 state.cursor_position = low;
             }
@@ -158,7 +213,8 @@ pub async fn handle_vim_keys(
         }
         'a' => {
             if state.cursor_position < state.input.len() {
-                state.cursor_position += 1;
+                let c = state.input[state.cursor_position..].chars().next().unwrap();
+                state.cursor_position += c.len_utf8();
             }
             state.mode = InputMode::Insert;
         }
@@ -174,12 +230,20 @@ pub async fn handle_vim_keys(
         }
         'h' => {
             if state.cursor_position > 0 {
-                state.cursor_position -= 1;
+                let c = state.input[..state.cursor_position]
+                    .chars()
+                    .next_back()
+                    .unwrap();
+                state.cursor_position -= c.len_utf8();
             }
         }
         'l' => {
-            if state.cursor_position + 1 < state.input.len() {
-                state.cursor_position += 1;
+            if state.cursor_position < state.input.len() {
+                let c = state.input[state.cursor_position..].chars().next().unwrap();
+                let next_pos = state.cursor_position + c.len_utf8();
+                if next_pos < state.input.len() {
+                    state.cursor_position = next_pos;
+                }
             }
         }
         'w' => {
@@ -224,9 +288,12 @@ pub async fn handle_vim_keys(
         }
         'x' => {
             let pos = state.cursor_position;
-            if pos < state.input.len() {
-                state.input.remove(pos);
-                clamp_cursor(&mut state);
+            if pos < state.input.len() && state.input.is_char_boundary(pos) {
+                if let Some(ch) = state.input[pos..].chars().next() {
+                    let char_end = pos + ch.len_utf8();
+                    state.input.drain(pos..char_end);
+                    clamp_cursor(&mut state);
+                }
             }
         }
         ':' => {

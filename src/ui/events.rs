@@ -262,17 +262,19 @@ async fn input_submit(
 
                 let emoji_len = state.emoji_filter.len();
                 let mut pos = state.cursor_position;
-                let start_pos = pos.saturating_sub(emoji_len + 1);
+                let start_pos = pos.saturating_sub(emoji_len + ':'.len_utf8());
 
-                state.input.drain(start_pos..pos);
-                pos = start_pos;
+                if state.input.is_char_boundary(start_pos) && state.input.is_char_boundary(pos) {
+                    state.input.drain(start_pos..pos);
+                    pos = start_pos;
 
-                state.input.insert_str(pos, char);
-                pos += char.len();
-                state.input.insert(pos, ' ');
-                pos += 1;
+                    state.input.insert_str(pos, char);
+                    pos += char.len();
+                    state.input.insert(pos, ' ');
+                    pos += ' '.len_utf8();
 
-                state.cursor_position = pos;
+                    state.cursor_position = pos;
+                }
             } else if state.selection_index < total_filtered_emojis {
                 let custom_index = state.selection_index - filtered_unicode.len();
                 let emoji = filtered_custom[custom_index];
@@ -290,17 +292,19 @@ async fn input_submit(
 
                 let emoji_len = state.emoji_filter.len();
                 let mut pos = state.cursor_position;
-                let start_pos = pos.saturating_sub(emoji_len + 1);
+                let start_pos = pos.saturating_sub(emoji_len + ':'.len_utf8());
 
-                state.input.drain(start_pos..pos);
-                pos = start_pos;
+                if state.input.is_char_boundary(start_pos) && state.input.is_char_boundary(pos) {
+                    state.input.drain(start_pos..pos);
+                    pos = start_pos;
 
-                state.input.insert_str(pos, &emoji_string);
-                pos += emoji_string.len();
-                state.input.insert(pos, ' ');
-                pos += 1;
+                    state.input.insert_str(pos, &emoji_string);
+                    pos += emoji_string.len();
+                    state.input.insert(pos, ' ');
+                    pos += ' '.len_utf8();
 
-                state.cursor_position = pos;
+                    state.cursor_position = pos;
+                }
             }
 
             state.state = AppState::Chatting(channel_id.clone());
@@ -493,7 +497,11 @@ pub async fn handle_keys_events(
             } else if state.mode == InputMode::Insert {
                 state.mode = InputMode::Normal;
                 if state.cursor_position > 0 {
-                    state.cursor_position -= 1;
+                    let c = state.input[..state.cursor_position]
+                        .chars()
+                        .next_back()
+                        .unwrap();
+                    state.cursor_position -= c.len_utf8();
                 }
                 vim::clamp_cursor(&mut state);
                 return None;
@@ -546,7 +554,7 @@ pub async fn handle_keys_events(
             // Let's just insert.
             let pos = state.cursor_position;
             state.input.insert_str(pos, &text);
-            state.cursor_position += text.chars().count();
+            state.cursor_position += text.len();
         }
         AppAction::InputChar(c) => {
             if !state.vim_mode {
@@ -555,7 +563,7 @@ pub async fn handle_keys_events(
                     AppState::EmojiSelection(channel_id) => {
                         let pos = state.cursor_position;
                         state.input.insert(pos, c);
-                        state.cursor_position += 1;
+                        state.cursor_position += c.len_utf8();
                         if c == ' ' {
                             state.state = AppState::Chatting(channel_id.clone());
                             state.emoji_filter.clear();
@@ -567,7 +575,7 @@ pub async fn handle_keys_events(
                     _ => {
                         let pos = state.cursor_position;
                         state.input.insert(pos, c);
-                        state.cursor_position += 1;
+                        state.cursor_position += c.len_utf8();
                     }
                 }
             } else {
@@ -581,7 +589,7 @@ pub async fn handle_keys_events(
                             AppState::EmojiSelection(channel_id) => {
                                 let pos = state.cursor_position;
                                 state.input.insert(pos, c);
-                                state.cursor_position += 1;
+                                state.cursor_position += c.len_utf8();
                                 if c == ' ' {
                                     state.state = AppState::Chatting(channel_id.clone());
                                     state.emoji_filter.clear();
@@ -593,7 +601,7 @@ pub async fn handle_keys_events(
                             _ => {
                                 let pos = state.cursor_position;
                                 state.input.insert(pos, c);
-                                state.cursor_position += 1;
+                                state.cursor_position += c.len_utf8();
                             }
                         }
                     }
@@ -602,12 +610,13 @@ pub async fn handle_keys_events(
         }
         AppAction::SelectEmoji => {
             if let AppState::Chatting(channel_id) = &mut state.clone().state {
-                let is_start_of_emoji = state.input.ends_with(' ') || state.input.is_empty();
+                let cursor_pos = std::cmp::min(state.cursor_position, state.input.len());
+                let is_start_of_emoji = cursor_pos == 0 || state.input[..cursor_pos].ends_with(' ');
 
                 if is_start_of_emoji {
                     let pos = state.cursor_position;
                     state.input.insert(pos, ':');
-                    state.cursor_position += 1;
+                    state.cursor_position += ':'.len_utf8();
                     let owned_channel_id = channel_id.clone();
                     state.state = AppState::EmojiSelection(owned_channel_id);
                     state.status_message =
@@ -617,7 +626,7 @@ pub async fn handle_keys_events(
                 } else {
                     let pos = state.cursor_position;
                     state.input.insert(pos, ':');
-                    state.cursor_position += 1;
+                    state.cursor_position += ':'.len_utf8();
                 }
             }
         }
@@ -627,15 +636,17 @@ pub async fn handle_keys_events(
                 AppState::Chatting(_) => {
                     if state.cursor_position > 0 {
                         let pos = state.cursor_position;
-                        state.input.remove(pos - 1);
-                        state.cursor_position -= 1;
+                        let c = state.input[..pos].chars().next_back().unwrap();
+                        state.input.remove(pos - c.len_utf8());
+                        state.cursor_position -= c.len_utf8();
                     }
                 }
                 AppState::EmojiSelection(channel_id) => {
                     if state.cursor_position > 0 {
                         let pos = state.cursor_position;
-                        state.input.remove(pos - 1);
-                        state.cursor_position -= 1;
+                        let c = state.input[..pos].chars().next_back().unwrap();
+                        state.input.remove(pos - c.len_utf8());
+                        state.cursor_position -= c.len_utf8();
                         state.emoji_filter.pop();
                         if state.emoji_filter.is_empty() {
                             state.state = AppState::Chatting(channel_id.clone());
@@ -647,8 +658,9 @@ pub async fn handle_keys_events(
                 _ => {
                     if state.cursor_position > 0 {
                         let pos = state.cursor_position;
-                        state.input.remove(pos - 1);
-                        state.cursor_position -= 1;
+                        let c = state.input[..pos].chars().next_back().unwrap();
+                        state.input.remove(pos - c.len_utf8());
+                        state.cursor_position -= c.len_utf8();
                     }
                 }
             }

@@ -205,7 +205,11 @@ async fn run_app(token: String, vim_mode: bool) -> Result<(), Error> {
         mode: InputMode::Normal,
         cursor_position: 0,
         vim_mode,
-        vim_state: Some(VimState::default()),
+        vim_state: if vim_mode {
+            Some(VimState::default())
+        } else {
+            None
+        },
     }));
 
     let (tx_action, mut rx_action) = mpsc::channel::<AppAction>(32);
