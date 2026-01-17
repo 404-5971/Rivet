@@ -476,13 +476,6 @@ pub async fn handle_keys_events(
 
     let total_filtered_emojis = filtered_unicode.len() + filtered_custom.len();
 
-    // Check for timeout
-    if let Some(start_time) = state.last_command_time.checked_add(state.command_timeout) {
-        if std::time::Instant::now() > start_time {
-            state.pending_command = None;
-        }
-    }
-
     match action {
         AppAction::SigInt => return Some(KeywordAction::Break),
         AppAction::InputEscape => {

@@ -1,10 +1,4 @@
-use std::{
-    env, io,
-    path::PathBuf,
-    process,
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::{env, io, path::PathBuf, process, sync::Arc, time::Duration};
 
 use crossterm::{
     cursor::SetCursorStyle,
@@ -25,7 +19,7 @@ use tokio::{
 use crate::{
     api::{ApiClient, Channel, Emoji, Guild, Message, channel::PermissionContext, dm::DM},
     signals::{restore_terminal, setup_ctrlc_handler},
-    ui::{draw_ui, handle_input_events, handle_keys_events},
+    ui::{draw_ui, handle_input_events, handle_keys_events, vim::VimState},
 };
 
 mod api;
@@ -115,10 +109,8 @@ pub struct App {
     context: Option<PermissionContext>,
     mode: InputMode,
     cursor_position: usize,
-    pending_command: Option<char>,
-    last_command_time: Instant,
-    command_timeout: Duration,
     vim_mode: bool,
+    vim_state: Option<VimState>,
 }
 
 impl App {
@@ -210,10 +202,8 @@ async fn run_app(token: String, vim_mode: bool) -> Result<(), Error> {
         context: None,
         mode: InputMode::Normal,
         cursor_position: 0,
-        pending_command: None,
-        last_command_time: Instant::now(),
-        command_timeout: Duration::from_secs(1),
         vim_mode,
+        vim_state: Some(VimState::default()),
     }));
 
     let (tx_action, mut rx_action) = mpsc::channel::<AppAction>(32);
