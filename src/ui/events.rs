@@ -637,7 +637,7 @@ pub async fn handle_keys_events(
                         state.emoji_filter.pop();
                         if state.emoji_filter.is_empty() {
                             state.state = AppState::Chatting(channel_id.clone());
-                            state.status_message = "Chatting in channel. Press Enter to send message. Esc to return channels".to_string();
+                            state.status_message = "Chatting in channel. Press Enter to send message. Esc to return to channels".to_string();
                         }
                         state.selection_index = 0;
                     }
