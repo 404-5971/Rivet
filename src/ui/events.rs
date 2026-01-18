@@ -303,9 +303,7 @@ async fn input_submit(
             tx_action.send(AppAction::EndLoading).await.ok();
         }
         AppState::EmojiSelection(channel_id) => {
-            let Some(start_pos) = state.emoji_filter_start else {
-                return None;
-            };
+            let start_pos = state.emoji_filter_start?;
             let end_pos = start_pos + ':'.len_utf8() + state.emoji_filter.len();
 
             if state.selection_index < filtered_unicode.len() {
