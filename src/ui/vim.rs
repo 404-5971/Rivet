@@ -6,19 +6,19 @@ use crate::{App, AppAction, InputMode};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum VimOperator {
     Delete,
-    Change,
-    Yank,
+    _Change,
+    _Yank,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum VimMotion {
     WordForward,
     WordBackward,
-    Line,
-    CharRight,
-    CharLeft,
-    StartOfLine,
-    EndOfLine,
+    _Line,
+    _CharRight,
+    _CharLeft,
+    _StartOfLine,
+    _EndOfLine,
 }
 
 #[derive(Debug, Clone)]
@@ -177,17 +177,17 @@ fn get_motion_range(state: &MutexGuard<'_, App>, motion: VimMotion) -> (usize, u
             }
             pos
         }
-        VimMotion::Line => len, // Special case, usually handled by operator logic
-        VimMotion::CharRight => start + input[start..].chars().next().map_or(0, |c| c.len_utf8()),
-        VimMotion::CharLeft => {
+        VimMotion::_Line => len, // Special case, usually handled by operator logic
+        VimMotion::_CharRight => start + input[start..].chars().next().map_or(0, |c| c.len_utf8()),
+        VimMotion::_CharLeft => {
             start
                 - input[..start]
                     .chars()
                     .next_back()
                     .map_or(0, |c| c.len_utf8())
         }
-        VimMotion::StartOfLine => 0,
-        VimMotion::EndOfLine => len,
+        VimMotion::_StartOfLine => 0,
+        VimMotion::_EndOfLine => len,
     };
 
     (start, end)
@@ -209,10 +209,10 @@ fn execute_operator(state: &mut MutexGuard<'_, App>, operator: VimOperator, rang
                 state.cursor_position = low;
             }
         }
-        VimOperator::Change => {
+        VimOperator::_Change => {
             // Not implemented yet
         }
-        VimOperator::Yank => {
+        VimOperator::_Yank => {
             // Not implemented yet
         }
     }
