@@ -575,8 +575,13 @@ pub fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
         chunks[1],
     );
 
+    let input_before_cursor = &app.input[..app.cursor_position];
+    let cursor_lines = input_before_cursor.split('\n').count();
+    let cursor_y = chunks[1].y + cursor_lines as u16;
+
+    let current_line_start = input_before_cursor.rfind('\n').map(|i| i + 1).unwrap_or(0);
     let cursor_x =
-        chunks[1].x + 1 + UnicodeWidthStr::width(&app.input[..app.cursor_position]) as u16;
-    let cursor_y = chunks[1].y + 1;
+        chunks[1].x + 1 + UnicodeWidthStr::width(&input_before_cursor[current_line_start..]) as u16;
+
     f.set_cursor_position((cursor_x, cursor_y));
 }
