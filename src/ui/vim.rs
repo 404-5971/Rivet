@@ -271,6 +271,15 @@ pub async fn handle_vim_keys(
             state.cursor_position = end_of_line;
             state.mode = InputMode::Insert;
         }
+        'O' => {
+            let current_line_start = state.input[..state.cursor_position]
+                .rfind('\n')
+                .map(|i| i + 1)
+                .unwrap_or(0);
+            state.input.insert(current_line_start, '\n');
+            state.cursor_position = current_line_start;
+            state.mode = InputMode::Insert;
+        }
         'o' => {
             let next_line_start = state.input[state.cursor_position..]
                 .find('\n')
